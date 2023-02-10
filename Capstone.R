@@ -3,6 +3,7 @@ rm(list = ls())
 gc()
 install.packages(c("tidyverse", "data.table"))
 
+getwd()
 library(tidyverse)
 library(lubridate)
 library(data.table)
