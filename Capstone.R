@@ -1,13 +1,13 @@
 .libPaths("C:/Users/Computer User 1/AppData/Local/R/win-library/4.2")
 rm(list = ls())
 gc()
-install.packages(c("tidyverse", "data.table"))
+install.packages(c("tidyverse", "lubridate"))
 
 getwd()
 library(tidyverse)
 library(lubridate)
-library(data.table)
-setwd("C:/Users/Computer User 1/OneDrive/Documents/Google certificate/Google-capstone")
+# library(data.table)
+setwd("C:/Users/Computer User 1/Documents/GitHub/Ramanvir/Google-capstone")
 
 local_folder1 <- getwd()
 
@@ -38,11 +38,29 @@ trips_merged<-rbind(trips_jan_2022,trips_feb_2022,trips_mar_2022, trips_apr_2022
 # View(trips_merged)
 
 trips_merged<-trips_merged %>% 
-  mutate(ride_length=ended_at-started_at, week_day=wday(started_at))
+  mutate(ride_length=ended_at-started_at, week_day=lubridate::wday(started_at, label=TRUE))
+
+
+# glimpse(trips_merged)
+
+# , label=TRUE
+#double checking whether week starts on Monday or Sunday, 
+# as in which of the two days is denoted by number 1
+
+trips_merged<-trips_merged %>% 
+  mutate(week_day_num=lubridate::wday(started_at))
+
+#so found out that week starts on Sunday
+
+# trips_merged$new_week_day<-weekdays(as.Date(trips_merged$started_at))
+#   
+# wday(trips_merged$started_at, label=TRUE)
 
 # arranged_trips<-trips_merged %>% arrange(-ride_length)
 #checking the number of rows with ride_length being less than or equal to zero 
-# length(which(arranged_trips$ride_length == 0))
+# length(which(trips_merged$ride_length == 0))
+length(which(trips_merged$ride_length < 0))
+# glimpse(trips_merged)
 
 selected_trips<-trips_merged %>% 
   filter(ride_length>0) 
@@ -57,11 +75,23 @@ selected_trips %>%
 # 
 # length(which(wday(selected_trips$ended_at)>wday(selected_trips$started_at)))
 # 
-# which(selected_trips$ended_at>selected_trips$started_at)
+# which(trips_merged$ended_at>trips_merged$started_at)
+# which(trips_merged$ended_at<trips_merged$started_at)
+# which(trips_merged$ended_at==trips_merged$started_at)
+
+#finding out if there are any trips with negative ride_length
+# experiment_trips<-trips_merged %>% 
+#   filter(ride_length<0)
+# 
+# experiment_trips<-trips_merged %>% 
+#   filter(ended_at<started_at)
+
+#checking if there are any trips where the end date is not the same as the start date
+ 
 
 selected_trips<-selected_trips %>% 
-  mutate(weekend_weekday = case_when(week_day == 6 | week_day == 7 ~ 'weekend',
-                        week_day == 1 | week_day ==2 | week_day==3 | 
+  mutate(weekend_weekday = case_when(week_day == 1 | week_day == 7 ~ 'weekend',
+                        week_day == 6 | week_day ==2 | week_day==3 | 
                           week_day ==4 | week_day==5 ~ 'weekday'))
 
 # max(selected_trips$ride_length)
