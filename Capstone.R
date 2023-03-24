@@ -1,11 +1,12 @@
 .libPaths("C:/Users/Computer User 1/AppData/Local/R/win-library/4.2")
 rm(list = ls())
 gc()
-install.packages(c("tidyverse", "lubridate"))
+install.packages(c("tidyverse", "lubridate", "data table"))
 
 getwd()
 library(tidyverse)
 library(lubridate)
+library(data.table)
 # library(data.table)
 setwd("C:/Users/Computer User 1/Documents/GitHub/Ramanvir/Google-capstone")
 
@@ -40,6 +41,9 @@ trips_merged<-rbind(trips_jan_2022,trips_feb_2022,trips_mar_2022, trips_apr_2022
 trips_merged<-trips_merged %>% 
   mutate(ride_length=ended_at-started_at, week_day=lubridate::wday(started_at, label=TRUE))
 
+#making new ride lenght column in hours
+trips_merged <- trips_merged %>% 
+  mutate(ride_length_hours=difftime(ended_at, started_at, units = "hours"))
 
 # glimpse(trips_merged)
 
@@ -69,7 +73,7 @@ selected_trips<-trips_merged %>%
 
 selected_trips %>% 
   group_by(member_casual) %>% 
-  summarize(mean_ride_length=mean(ride_length)) 
+  summarize(mean_ride_length=mean(ride_length_hours)) 
 
 # ?wday  
 # 
@@ -90,9 +94,9 @@ selected_trips %>%
  
 
 selected_trips<-selected_trips %>% 
-  mutate(weekend_weekday = case_when(week_day == 1 | week_day == 7 ~ 'weekend',
-                        week_day == 6 | week_day ==2 | week_day==3 | 
-                          week_day ==4 | week_day==5 ~ 'weekday'))
+  mutate(weekend_weekday = case_when(week_day_num == 1 | week_day_num == 7 ~ 'weekend',
+                                     week_day_num == 6 | week_day_num ==2 | week_day_num==3 | 
+                                       week_day_num ==4 | week_day_num==5 ~ 'weekday'))
 
 # max(selected_trips$ride_length)
 
@@ -112,36 +116,109 @@ selected_trips<-selected_trips%>%
 
 #setting date column
 selected_trips<-selected_trips %>% 
-  mutate(month=as.Date(paste0("2022-", sprintf("%02d", month), "-01")))
+  mutate(month_amended=as.Date(paste0("2022-", sprintf("%02d", month), "-01")))
+#setting date column without the day
 
+selected_trips<-selected_trips%>%
+  mutate(month_year=format(as.Date(started_at), "%Y-%m"))
+           
+           
 # ?as.Date
 #   
 # glimpse(selected_trips_new)
 
 #generating specific data frames for plots
 df_plot1<-selected_trips %>% 
- group_by(month, member_casual) %>% drop_na() %>% 
-  summarize(Monthly_travel=sum(ride_length))  
+ group_by(month_amended, member_casual) %>% drop_na() %>% 
+  summarize(Monthly_travel=sum(ride_length_hours))  
 
 df_plot2<-selected_trips %>% 
-  group_by(month, member_casual, weekend_weekday) %>% drop_na() %>% 
-  summarize(Monthly_travel_hrs=sum(ride_length)/3600)  
+  group_by(month_amended, member_casual, weekend_weekday) %>% drop_na() %>% 
+  summarize(Monthly_travel=sum(ride_length_hours))
+
+mindate<-min(selected_trips$month_year)
+maxdate<-max(selected_trips$month_year)
+# glimpse(mindate)
+# glimpse(maxdate)
+
+#studying the numbers
+# df_month <- selected_trips %>% 
+#   group_by(month) %>% drop_na() %>% 
+#   summarize(Monthly_travel=sum(ride_length_hours))
+# 
+# df_month_weeekend_weekday <- selected_trips %>% 
+#   group_by(month, weekend_weekday) %>% drop_na() %>% 
+#   summarize(Monthly_travel=sum(ride_length_hours))
+# 
+# df_month_member_casual <- selected_trips %>% 
+#   group_by(month, member_casual) %>% drop_na() %>% 
+#   summarize(Monthly_travel=sum(ride_length_hours))
+
+# df_plot2<-selected_trips %>%
+#   group_by(month, member_casual, weekend_weekday) %>% drop_na() %>%
+#   summarize(Monthly_travel=sum(ride_length_hours)
+
+# hours(df_plot2$Monthly_travel_hrs)
+
+#trying to convert seconds into hours
+
+# df_plot3<-selected_trips %>% group_by(month, member_casual, weekend_weekday) %>% drop_na() %>% 
+#     summarize(Monthly_travel_hrs=dhours(sum(ride_length)))
+  
+
+# df_plot2 <- gsub("secs", "", df_plot2$Monthly_travel_hrs)
+# glimpse(df_plot2)
+
+# df_plot2 %>% mutate(Monthly_travel_hours = hour(seconds_to_period(Monthly_travel_hrs)))
+                    
+                    
+# Data %>%mutate(Hours = hour(seconds_to_period(Time)),
+#   mutate(Hours = hour(seconds_to_period(Time)),
+#          Minutes = minute(seconds_to_period(Time))) %>%
+#   select(Hours, Minutes, ColA, ColB)
+# df1$x1<-gsub("1","",as.character(df1$x1))
+
 
 
 #plotting
 ggplot(data=df_plot1) + 
-  geom_smooth(aes(x=month, y=Monthly_travel, color=member_casual))
+  geom_smooth(aes(x=month_amended, y=Monthly_travel, color=member_casual))+
+  labs(title="Analysis of Cyclistic Ridership", 
+       subtitle=paste("Casual riders travel more than annual members of the bike-share company."), 
+       caption = paste("Data from:", mindate, "to", maxdate),
+       x="Month", y="Travel Time in Hours")
+
+ggplot(data=df_plot1) + 
+  geom_point(aes(x=month_amended, y=Monthly_travel, color=member_casual))
+
 
 #to save the plot
 ggsave("monthly_travel.png",
               width = 12,
             height = 8)
+
+ggsave("monthly_travel_geompoint.png",
+       width = 12,
+       height = 8)
        
-ggplot(data=df_plot2) + 
-  geom_smooth(aes(x=month, y=Monthly_travel_hrs, color=member_casual))+
-  facet_wrap(~weekend_weekday)
+ggplot(data=df_plot2)+ 
+  geom_smooth(aes(x=month_amended, y=Monthly_travel, color=member_casual))+
+  facet_wrap(~weekend_weekday)+
+  labs(title="Analysis of Cyclistic Ridership", 
+       subtitle=paste("Casual riders travel more than annual members of the bike-share company."), 
+                                   caption = paste("Data from:", mindate, "to", maxdate),
+                                   x="Month", y="Travel Time in Hours")
+
+# ggplot(data=df_plot2) + 
+#   geom_point(aes(x=month, y=Monthly_travel, color=member_casual))+
+#   facet_wrap(~weekend_weekday)
 
 #to save the plot
 ggsave("monthly_travel_weekends.png",
        width = 12,
        height = 8)
+
+
+# ggsave("monthly_travel_weekends_geompoint.png",
+#        width = 12,
+#        height = 8)
